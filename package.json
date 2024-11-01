@@ -1,0 +1,22 @@
+{
+  "name": "slack-bolt-app",
+  "version": "1.0.0",
+  "description": "Slack app built with Slack Bolt SDK",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.11.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Vaše Jméno",
+  "license": "MIT"
+}
