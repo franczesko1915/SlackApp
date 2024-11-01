@@ -1,0 +1,36 @@
+# Node modules
+node_modules/
+
+# Environmentální proměnné
+.env
+
+# Vercel nebo Heroku specifické konfigurační soubory
+.vercel/
+.vercel_build_output/
+*.env.local
+*.env.production
+*.env.development
+
+# Logy a debug soubory
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Soubory generované systémem
+.DS_Store
+Thumbs.db
+
+# Git specific
+.git/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Vscode specific files
+.vscode/
+
+# Zálohovací soubory vytvořené editory
+*.bak
+*.backup
