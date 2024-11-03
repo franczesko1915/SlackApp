@@ -4,8 +4,7 @@ import express from 'express';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 async function handleSlackTaskCompletion(req) {
-  try {
-    console.log('Starting async task handling...');
+  console.log('Starting async task handling...');
   try {
     console.log('Starting async task handling...');
   let payload;
@@ -43,14 +42,13 @@ async function handleSlackTaskCompletion(req) {
   const responseUrl = payload.response_url;
     // Immediate response to Slack to avoid timeout
     res.status(200).send('OK');
-    console.log('Slack response sent. Proceeding with task handling asynchronously.');
+  console.log('Slack response sent. Proceeding with task handling asynchronously.');
 
   // Google Apps Script integration to mark task as completed
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
   const client = new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '
-'),
+    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, ''),
     scopes: SCOPES,
   });
 
