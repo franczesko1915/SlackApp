@@ -73,6 +73,14 @@ app.post('/api/task-complete', (req, res) => {
     if (!req.body || !req.body.payload) {
       throw new Error('Payload is missing');
     }
+    // Decode URL-encoded payload
+    payload = decodeURIComponent(req.body.payload);
+    try {
+      payload = JSON.parse(payload);
+    } catch (error) {
+      console.error('Failed to parse payload as JSON:', error);
+      return res.status(400).send('Invalid payload format');
+    }
     if (req.body && req.body.payload) {
       try {
         payload = JSON.parse(req.body.payload);
