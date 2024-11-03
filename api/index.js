@@ -4,6 +4,8 @@ import express from 'express';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 async function handleSlackTaskCompletion(req) {
+  try {
+    console.log('Starting async task handling...');
   let payload;
   try {
     if (!req.body || !req.body.payload) {
@@ -37,6 +39,8 @@ async function handleSlackTaskCompletion(req) {
   }
 
   const responseUrl = payload.response_url;
+    // Immediate response to Slack to avoid timeout
+    res.status(200).send('OK');
 
   // Google Apps Script integration to mark task as completed
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
@@ -172,7 +176,7 @@ function verifySlackRequest(req) {
 }
 
 // Endpoint to handle Slack button interactions
-app.post('/api/task-complete', (req, res) => {
+app.post('/api/task-complete', async (req, res) => {
   console.log('Received a request to /api/task-complete');
   console.log('Headers:', req.headers);
 
@@ -186,7 +190,7 @@ app.post('/api/task-complete', (req, res) => {
   console.log('Slack request verified, response sent. Starting async task handling.');
 
   // Asynchronous operations are now moved to a separate function
-  handleSlackTaskCompletion(req).catch(err => console.error('Error in async task handling:', err));
+  await handleSlackTaskCompletion(req);
 
   
 });
