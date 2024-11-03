@@ -113,9 +113,7 @@ app.post('/api/task-complete', (req, res) => {
     const SCOPES = ['https://www.googleapis.com/auth/documents'];
     const client = new JWT({
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      key: process.env.GOOGLE_PRIVATE_KEY.replace(/
-/g, '
-'),
+      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       scopes: SCOPES,
     });
 
