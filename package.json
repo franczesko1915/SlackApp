@@ -2,7 +2,7 @@
   "name": "vercel-slack-handler",
   "version": "1.0.0",
   "description": "A Vercel app to handle Slack button interactions and update Google Docs",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node index.js"
   },
