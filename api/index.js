@@ -59,7 +59,7 @@ function verifySlackRequest(req) {
 }
 
 // Endpoint to handle Slack button interactions
-app.post('/api/task-complete', (req, res) => {
+app.post('/api/task-complete', async (req, res) => {
   console.log('Received a request to /api/task-complete');
   console.log('Headers:', req.headers);
   
@@ -67,6 +67,8 @@ app.post('/api/task-complete', (req, res) => {
     console.error('Slack request verification failed');
     return res.status(400).send('Verification failed');
   }
+
+  res.status(200).send('OK'); // Respond immediately to avoid timeout
 
   let payload;
   try {
@@ -79,18 +81,7 @@ app.post('/api/task-complete', (req, res) => {
       payload = JSON.parse(payload);
     } catch (error) {
       console.error('Failed to parse payload as JSON:', error);
-      return res.status(400).send('Invalid payload format');
-    }
-    if (req.body && req.body.payload) {
-      try {
-        payload = JSON.parse(req.body.payload);
-      } catch (error) {
-        console.error('Failed to parse payload as JSON:', error);
-        return res.status(400).send('Invalid payload format');
-      }
-    } else {
-      console.error('Payload is missing from the request body');
-      return res.status(400).send('Payload is missing');
+      return;
     }
     if (!payload || !payload.actions || !payload.actions[0]) {
       throw new Error('Invalid payload structure');
@@ -98,7 +89,7 @@ app.post('/api/task-complete', (req, res) => {
     console.log('Payload parsed successfully:', payload);
   } catch (error) {
     console.error('Error parsing payload:', error);
-    return res.status(400).send('Invalid payload');
+    return;
   }
 
   let docId, taskIndex;
@@ -112,7 +103,7 @@ app.post('/api/task-complete', (req, res) => {
     console.log('docId and taskIndex extracted:', { docId, taskIndex });
   } catch (error) {
     console.error('Error extracting docId and taskIndex from payload:', error);
-    return res.status(400).send('Invalid action value');
+    return;
   }
 
   const responseUrl = payload.response_url;
@@ -125,101 +116,78 @@ app.post('/api/task-complete', (req, res) => {
     scopes: SCOPES,
   });
 
-  client.authorize((err, tokens) => {
-    if (err) {
-      console.error('Error authorizing Google client:', err);
-      return res.status(500).send('Internal Server Error');
-    }
-
+  try {
+    await client.authorize();
     console.log('Google client authorized successfully');
     const docs = google.docs({ version: 'v1', auth: client });
 
-    docs.documents.get({ documentId: docId }, (err, docRes) => {
-      if (err) {
-        console.error('Error retrieving document:', err);
-        return res.status(500).send('Internal Server Error');
-      }
+    const docRes = await docs.documents.get({ documentId: docId });
+    console.log('Document retrieved successfully');
+    if (!docRes.data.body.content[taskIndex] || !docRes.data.body.content[taskIndex].paragraph) {
+      console.error('Invalid taskIndex, paragraph not found');
+      return;
+    }
 
-      console.log('Document retrieved successfully');
-      if (!docRes.data.body.content[taskIndex] || !docRes.data.body.content[taskIndex].paragraph) {
-        console.error('Invalid taskIndex, paragraph not found');
-        return res.status(400).send('Invalid task index');
-      }
+    const taskText = docRes.data.body.content[taskIndex].paragraph.elements[0].textRun.content;
+    const updatedText = `✅ ${taskText}`;
 
-      const taskText = docRes.data.body.content[taskIndex].paragraph.elements[0].textRun.content;
-      const updatedText = `✅ ${taskText}`;
+    await docs.documents.batchUpdate({
+      documentId: docId,
+      requestBody: {
+        requests: [
+          {
+            updateTextStyle: {
+              textStyle: {
+                backgroundColor: {
+                  color: {
+                    rgbColor: { red: 0.83, green: 0.93, blue: 0.85 },
+                  },
+                },
+              },
+              range: {
+                startIndex: taskIndex,
+                endIndex: taskIndex + taskText.length,
+              },
+            },
+          },
+          {
+            insertText: {
+              location: {
+                index: taskIndex,
+              },
+              text: updatedText,
+            },
+          },
+        ],
+      },
+    });
+    console.log('Document updated successfully');
 
-      docs.documents.batchUpdate(
+    // Respond to Slack with updated message
+    const responsePayload = {
+      replace_original: true,
+      blocks: [
         {
-          documentId: docId,
-          requestBody: {
-            requests: [
-              {
-                updateTextStyle: {
-                  textStyle: {
-                    backgroundColor: {
-                      color: {
-                        rgbColor: { red: 0.83, green: 0.93, blue: 0.85 },
-                      },
-                    },
-                  },
-                  range: {
-                    startIndex: taskIndex,
-                    endIndex: taskIndex + taskText.length,
-                  },
-                },
-              },
-              {
-                insertText: {
-                  location: {
-                    index: taskIndex,
-                  },
-                  text: updatedText,
-                },
-              },
-            ],
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `✅ ${taskText}`,
           },
         },
-        (err) => {
-          if (err) {
-            console.error('Error updating document:', err);
-            return res.status(500).send('Internal Server Error');
-          }
+      ],
+    };
 
-          console.log('Document updated successfully');
-          // Respond to Slack with updated message
-          const responsePayload = {
-            replace_original: true,
-            blocks: [
-              {
-                type: 'section',
-                text: {
-                  type: 'mrkdwn',
-                  text: `✅ ${taskText}`,
-                },
-              },
-            ],
-          };
-
-          fetch(responseUrl, {
-            method: 'post',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(responsePayload),
-          })
-            .then(() => {
-              console.log('Response sent to Slack successfully');
-              res.status(200).send('OK');
-            })
-            .catch((err) => {
-              console.error('Error sending response to Slack:', err);
-              res.status(500).send('Internal Server Error');
-            });
-        }
-      );
+    await fetch(responseUrl, {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(responsePayload),
     });
-  });
+    console.log('Response sent to Slack successfully');
+  } catch (err) {
+    console.error('Error during processing:', err);
+  }
 });
 
 export default app;
