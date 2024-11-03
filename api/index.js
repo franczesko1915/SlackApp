@@ -11,7 +11,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 const app = express();
-app.use(express.json()); // Middleware to parse JSON body
+app.use(express.urlencoded({ extended: true })); // Middleware to parse JSON body
 app.use((req, res, next) => {
   req.rawBody = '';
   req.setEncoding('utf8');
@@ -73,10 +73,16 @@ app.post('/api/task-complete', (req, res) => {
     if (!req.body || !req.body.payload) {
       throw new Error('Payload is missing');
     }
-    if (typeof req.body.payload === 'string') {
-      payload = JSON.parse(req.body.payload);
+    if (req.body && req.body.payload) {
+      try {
+        payload = JSON.parse(req.body.payload);
+      } catch (error) {
+        console.error('Failed to parse payload as JSON:', error);
+        return res.status(400).send('Invalid payload format');
+      }
     } else {
-      payload = req.body.payload;
+      console.error('Payload is missing from the request body');
+      return res.status(400).send('Payload is missing');
     }
     if (!payload || !payload.actions || !payload.actions[0]) {
       throw new Error('Invalid payload structure');
