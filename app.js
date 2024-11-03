@@ -18,8 +18,9 @@ app.post('/api/task-complete', async (req, res) => {
     const { docId, taskIndex } = JSON.parse(payload.actions[0].value);
 
     // Google Auth setup
+    const googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS); // Credentials as an object from .env
     const auth = new google.auth.GoogleAuth({
-      keyFile: process.env.GOOGLE_CREDENTIALS_FILE, // Path to credentials.json file
+      credentials: googleCredentials,
       scopes: ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
     });
     const client = await auth.getClient();
@@ -155,7 +156,7 @@ module.exports = app;
  *
  *    d. `.env` - This file stores sensitive credentials such as Google and Slack tokens.
  *       Example of `.env` file:
- *       GOOGLE_CREDENTIALS_FILE=./credentials.json
+ *       GOOGLE_CREDENTIALS={"type":"service_account","project_id":"your_project_id","private_key_id":"your_private_key_id","private_key":"-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n","client_email":"your_service_account_email","client_id":"your_client_id","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"YOUR_CLIENT_CERT_URL"}
  *       SLACK_TOKEN=xoxb-your-slack-bot-token
  *
  * 4. Navigate to your project folder in the terminal and run `vercel` to initiate the deployment.
