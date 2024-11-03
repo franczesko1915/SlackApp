@@ -11,7 +11,17 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 const app = express();
-app.use(express.raw({ type: 'application/json' })); // Middleware to parse raw body for Slack signature verification
+app.use(express.json()); // Middleware to parse JSON body
+app.use((req, res, next) => {
+  req.rawBody = '';
+  req.setEncoding('utf8');
+  req.on('data', (chunk) => {
+    req.rawBody += chunk;
+  });
+  req.on('end', () => {
+    next();
+  });
+});
 
 // Environment variables
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
@@ -21,8 +31,14 @@ const slackToken = process.env.SLACK_BOT_TOKEN;
 function verifySlackRequest(req) {
   const slackSignature = req.headers['x-slack-signature'];
   const slackRequestTimestamp = req.headers['x-slack-request-timestamp'];
-  const time = Math.floor(new Date().getTime() / 1000);
+  
+  if (!slackSignature || !slackRequestTimestamp) {
+    console.error('Missing Slack signature or timestamp headers');
+    return false;
+  }
 
+  const time = Math.floor(new Date().getTime() / 1000);
+  
   // Deny requests older than 5 minutes
   if (Math.abs(time - slackRequestTimestamp) > 60 * 5) {
     console.error('Request timestamp is older than 5 minutes. Possible replay attack.');
@@ -34,12 +50,19 @@ function verifySlackRequest(req) {
   hmac.update(sigBaseString);
   const mySignature = `v0=${hmac.digest('hex')}`;
 
-  return crypto.timingSafeEqual(Buffer.from(mySignature), Buffer.from(slackSignature));
+  const verified = crypto.timingSafeEqual(Buffer.from(mySignature), Buffer.from(slackSignature));
+  if (!verified) {
+    console.error('Slack request verification failed. Signature does not match.');
+  }
+  
+  return verified;
 }
 
 // Endpoint to handle Slack button interactions
 app.post('/api/task-complete', (req, res) => {
   console.log('Received a request to /api/task-complete');
+  console.log('Headers:', req.headers);
+  
   if (!verifySlackRequest(req)) {
     console.error('Slack request verification failed');
     return res.status(400).send('Verification failed');
@@ -56,9 +79,7 @@ app.post('/api/task-complete', (req, res) => {
 
   let docId, taskIndex;
   try {
-    const actionValue = JSON.parse(payload.actions[0].value);
-    docId = actionValue.docId;
-    taskIndex = actionValue.taskIndex;
+    ({ docId, taskIndex } = JSON.parse(payload.actions[0].value));
     console.log('docId and taskIndex extracted:', { docId, taskIndex });
   } catch (error) {
     console.error('Error extracting docId and taskIndex from payload:', error);
