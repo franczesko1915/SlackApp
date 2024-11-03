@@ -1,8 +1,11 @@
 // Backend code to handle Slack button interactions in a Vercel app, including signature validation for security.
 
-const express = require('express');
-const crypto = require('crypto');
-const bodyParser = require('body-parser');
+import express from 'express';
+import crypto from 'crypto';
+import bodyParser from 'body-parser';
+import fetch from 'node-fetch';
+import { google } from 'googleapis';
+import { JWT } from 'google-auth-library';
 
 const app = express();
 app.use(bodyParser.json());
@@ -53,13 +56,10 @@ app.post('/api/task-complete', (req, res) => {
   const responseUrl = payload.response_url;
 
   // Google Apps Script integration to mark task as completed
-  const { google } = require('googleapis');
-  const { JWT } = require('google-auth-library');
-
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
   const client = new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '\n'),
     scopes: SCOPES,
   });
 
@@ -149,4 +149,4 @@ app.post('/api/task-complete', (req, res) => {
   });
 });
 
-module.exports = app;
+export default app;
