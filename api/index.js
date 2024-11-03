@@ -70,7 +70,11 @@ app.post('/api/task-complete', (req, res) => {
 
   let payload;
   try {
+    if (typeof req.body.payload === 'string') {
     payload = JSON.parse(req.body.payload);
+  } else {
+    payload = req.body.payload;
+  }
     console.log('Payload parsed successfully:', payload);
   } catch (error) {
     console.error('Error parsing payload:', error);
