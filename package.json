@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A Vercel app to handle Slack button interactions and update Google Docs",
   "main": "api/index.js",
+  "type": "module",
   "scripts": {
     "start": "node api/index.js"
   },
