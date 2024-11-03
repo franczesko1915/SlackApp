@@ -2,7 +2,11 @@
 
 import express from 'express';
 import crypto from 'crypto';
-import fetch from 'node-fetch';
+// Import node-fetch dynamically to support ESM
+let fetch;
+(async () => {
+  fetch = (await import('node-fetch')).default;
+})();
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
@@ -21,6 +25,7 @@ function verifySlackRequest(req) {
 
   // Deny requests older than 5 minutes
   if (Math.abs(time - slackRequestTimestamp) > 60 * 5) {
+    console.error('Request timestamp is older than 5 minutes. Possible replay attack.');
     return false;
   }
 
@@ -34,6 +39,7 @@ function verifySlackRequest(req) {
 
 // Endpoint to handle Slack button interactions
 app.post('/api/task-complete', (req, res) => {
+  console.log('Received a request to /api/task-complete');
   if (!verifySlackRequest(req)) {
     console.error('Slack request verification failed');
     return res.status(400).send('Verification failed');
@@ -42,19 +48,28 @@ app.post('/api/task-complete', (req, res) => {
   let payload;
   try {
     payload = JSON.parse(req.body.payload);
+    console.log('Payload parsed successfully:', payload);
   } catch (error) {
     console.error('Error parsing payload:', error);
     return res.status(400).send('Invalid payload');
   }
 
-  const { docId, taskIndex } = JSON.parse(payload.actions[0].value);
+  let { docId, taskIndex };
+  try {
+    ({ docId, taskIndex } = JSON.parse(payload.actions[0].value));
+    console.log('docId and taskIndex extracted:', { docId, taskIndex });
+  } catch (error) {
+    console.error('Error extracting docId and taskIndex from payload:', error);
+    return res.status(400).send('Invalid action value');
+  }
+
   const responseUrl = payload.response_url;
 
   // Google Apps Script integration to mark task as completed
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
   const client = new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '\n'),
     scopes: SCOPES,
   });
 
@@ -64,12 +79,19 @@ app.post('/api/task-complete', (req, res) => {
       return res.status(500).send('Internal Server Error');
     }
 
+    console.log('Google client authorized successfully');
     const docs = google.docs({ version: 'v1', auth: client });
 
     docs.documents.get({ documentId: docId }, (err, docRes) => {
       if (err) {
         console.error('Error retrieving document:', err);
         return res.status(500).send('Internal Server Error');
+      }
+
+      console.log('Document retrieved successfully');
+      if (!docRes.data.body.content[taskIndex] || !docRes.data.body.content[taskIndex].paragraph) {
+        console.error('Invalid taskIndex, paragraph not found');
+        return res.status(400).send('Invalid task index');
       }
 
       const taskText = docRes.data.body.content[taskIndex].paragraph.elements[0].textRun.content;
@@ -112,6 +134,7 @@ app.post('/api/task-complete', (req, res) => {
             return res.status(500).send('Internal Server Error');
           }
 
+          console.log('Document updated successfully');
           // Respond to Slack with updated message
           const responsePayload = {
             replace_original: true,
@@ -133,7 +156,10 @@ app.post('/api/task-complete', (req, res) => {
             },
             body: JSON.stringify(responsePayload),
           })
-            .then(() => res.status(200).send('OK'))
+            .then(() => {
+              console.log('Response sent to Slack successfully');
+              res.status(200).send('OK');
+            })
             .catch((err) => {
               console.error('Error sending response to Slack:', err);
               res.status(500).send('Internal Server Error');
