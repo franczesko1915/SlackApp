@@ -13,35 +13,31 @@ async function handleSlackTaskCompletion(req) {
       throw new Error('Payload is missing');
     }
     // Decode URL-encoded payload
-    payload = decodeURIComponent(req.body.payload);
+    let payload = decodeURIComponent(req.body.payload);
     payload = JSON.parse(payload);
 
     if (!payload || !payload.actions || !payload.actions[0]) {
       throw new Error('Invalid payload structure');
     }
     console.log('Payload parsed successfully:', payload);
-  } catch (error) {
-    console.error('Error parsing payload:', error);
-    return;
-  }
 
-  let docId, taskIndex;
-  try {
-    const actionValue = JSON.parse(payload.actions[0].value);
-    docId = actionValue.docId;
-    taskIndex = actionValue.taskIndex;
-    if (!docId || taskIndex === undefined) {
-      throw new Error('Missing docId or taskIndex');
+    let docId, taskIndex;
+    try {
+      const actionValue = JSON.parse(payload.actions[0].value);
+      docId = actionValue.docId;
+      taskIndex = actionValue.taskIndex;
+      if (!docId || taskIndex === undefined) {
+        throw new Error('Missing docId or taskIndex');
+      }
+      console.log('docId and taskIndex extracted:', { docId, taskIndex });
+    } catch (error) {
+      console.error('Error extracting docId and taskIndex from payload:', error);
+      return;
     }
-    console.log('docId and taskIndex extracted:', { docId, taskIndex });
-  } catch (error) {
-    console.error('Error extracting docId and taskIndex from payload:', error);
-    return;
-  }
 
-  const responseUrl = payload.response_url;
-    // Immediate response to Slack to avoid timeout
-    res.status(200).send('OK');
+    const responseUrl = payload.response_url;
+    console.log('Proceeding with task handling asynchronously after Slack response.');
+  console.log('Slack response sent. Proceeding with task handling asynchronously.');
   console.log('Slack response sent. Proceeding with task handling asynchronously.');
 
   // Google Apps Script integration to mark task as completed
