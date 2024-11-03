@@ -6,6 +6,8 @@ import fetch from 'node-fetch';
 async function handleSlackTaskCompletion(req) {
   try {
     console.log('Starting async task handling...');
+  try {
+    console.log('Starting async task handling...');
   let payload;
   try {
     if (!req.body || !req.body.payload) {
@@ -41,12 +43,14 @@ async function handleSlackTaskCompletion(req) {
   const responseUrl = payload.response_url;
     // Immediate response to Slack to avoid timeout
     res.status(200).send('OK');
+    console.log('Slack response sent. Proceeding with task handling asynchronously.');
 
   // Google Apps Script integration to mark task as completed
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
   const client = new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, ''),
+    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '
+'),
     scopes: SCOPES,
   });
 
@@ -190,7 +194,7 @@ app.post('/api/task-complete', async (req, res) => {
   console.log('Slack request verified, response sent. Starting async task handling.');
 
   // Asynchronous operations are now moved to a separate function
-  await handleSlackTaskCompletion(req);
+  handleSlackTaskCompletion(req).catch(err => console.error('Error in async task handling:', err));
 
   
 });
