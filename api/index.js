@@ -54,9 +54,11 @@ app.post('/api/task-complete', (req, res) => {
     return res.status(400).send('Invalid payload');
   }
 
-  let { docId, taskIndex };
+  let docId, taskIndex;
   try {
-    ({ docId, taskIndex } = JSON.parse(payload.actions[0].value));
+    const actionValue = JSON.parse(payload.actions[0].value);
+    docId = actionValue.docId;
+    taskIndex = actionValue.taskIndex;
     console.log('docId and taskIndex extracted:', { docId, taskIndex });
   } catch (error) {
     console.error('Error extracting docId and taskIndex from payload:', error);
