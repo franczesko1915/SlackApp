@@ -184,7 +184,7 @@ app.post('/api/task-complete', (req, res) => {
   res.status(200).send('OK'); // Respond immediately to avoid timeout
 
   // Asynchronous operations are now moved to a separate function
-  handleSlackTaskCompletion(req);
+  setImmediate(() => handleSlackTaskCompletion(req));
 
   
 });
