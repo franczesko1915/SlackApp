@@ -90,7 +90,7 @@ async function handleSlackTaskCompletion(req) {
           },
         ],
       },
-    });
+    }).catch(err => console.error('Error during Google Docs update:', err));
     console.log('Document updated successfully');
 
     // Respond to Slack with updated message
@@ -113,7 +113,7 @@ async function handleSlackTaskCompletion(req) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(responsePayload),
-    });
+    }).catch(err => console.error('Error sending response to Slack:', err));
     console.log('Response sent to Slack successfully');
   } catch (err) {
     console.error('Error during processing:', err);
@@ -183,8 +183,10 @@ app.post('/api/task-complete', (req, res) => {
 
   res.status(200).send('OK'); // Respond immediately to avoid timeout
 
+  console.log('Slack request verified, response sent. Starting async task handling.');
+
   // Asynchronous operations are now moved to a separate function
-  setImmediate(() => handleSlackTaskCompletion(req));
+  handleSlackTaskCompletion(req).catch(err => console.error('Error in async task handling:', err));
 
   
 });
