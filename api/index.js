@@ -2,13 +2,12 @@
 
 import express from 'express';
 import crypto from 'crypto';
-import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.raw({ type: 'application/json' })); // Middleware to parse raw body for Slack signature verification
 
 // Environment variables
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
@@ -33,25 +32,21 @@ function verifySlackRequest(req) {
   return crypto.timingSafeEqual(Buffer.from(mySignature), Buffer.from(slackSignature));
 }
 
-// Middleware to parse raw body and make it available for signature validation
-app.use((req, res, next) => {
-  req.rawBody = '';
-  req.setEncoding('utf8');
-  req.on('data', (chunk) => {
-    req.rawBody += chunk;
-  });
-  req.on('end', () => {
-    next();
-  });
-});
-
 // Endpoint to handle Slack button interactions
 app.post('/api/task-complete', (req, res) => {
   if (!verifySlackRequest(req)) {
+    console.error('Slack request verification failed');
     return res.status(400).send('Verification failed');
   }
 
-  const payload = JSON.parse(req.body.payload);
+  let payload;
+  try {
+    payload = JSON.parse(req.body.payload);
+  } catch (error) {
+    console.error('Error parsing payload:', error);
+    return res.status(400).send('Invalid payload');
+  }
+
   const { docId, taskIndex } = JSON.parse(payload.actions[0].value);
   const responseUrl = payload.response_url;
 
@@ -59,7 +54,7 @@ app.post('/api/task-complete', (req, res) => {
   const SCOPES = ['https://www.googleapis.com/auth/documents'];
   const client = new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '\n'),
+    key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     scopes: SCOPES,
   });
 
