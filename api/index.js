@@ -5,15 +5,13 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 async function handleSlackTaskCompletion(req) {
   console.log('Starting async task handling...');
-  try {
     console.log('Starting async task handling...');
-  let payload;
   try {
     if (!req.body || !req.body.payload) {
       throw new Error('Payload is missing');
     }
     // Decode URL-encoded payload
-    let payload = decodeURIComponent(req.body.payload);
+    payload = decodeURIComponent(req.body.payload);
     payload = JSON.parse(payload);
 
     if (!payload || !payload.actions || !payload.actions[0]) {
@@ -23,13 +21,19 @@ async function handleSlackTaskCompletion(req) {
 
     let docId, taskIndex;
     try {
-      const actionValue = JSON.parse(payload.actions[0].value);
+      let actionValue;
+    try {
+      actionValue = JSON.parse(payload.actions[0].value);
       docId = actionValue.docId;
       taskIndex = actionValue.taskIndex;
       if (!docId || taskIndex === undefined) {
         throw new Error('Missing docId or taskIndex');
       }
-      console.log('docId and taskIndex extracted:', { docId, taskIndex });
+      $1
+    } catch (error) {
+      console.error('Error extracting docId and taskIndex from payload:', error);
+      return;
+    }
     } catch (error) {
       console.error('Error extracting docId and taskIndex from payload:', error);
       return;
@@ -37,6 +41,7 @@ async function handleSlackTaskCompletion(req) {
 
     const responseUrl = payload.response_url;
     console.log('Proceeding with task handling asynchronously after Slack response.');
+
   console.log('Slack response sent. Proceeding with task handling asynchronously.');
   console.log('Slack response sent. Proceeding with task handling asynchronously.');
 
@@ -92,7 +97,7 @@ async function handleSlackTaskCompletion(req) {
           },
         ],
       },
-    }).catch(err => console.error('Error during Google Docs update:', err));
+    });
     console.log('Document updated successfully');
 
     // Respond to Slack with updated message
@@ -115,7 +120,7 @@ async function handleSlackTaskCompletion(req) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(responsePayload),
-    }).catch(err => console.error('Error sending response to Slack:', err));
+    });
     console.log('Response sent to Slack successfully');
   } catch (err) {
     console.error('Error during processing:', err);
